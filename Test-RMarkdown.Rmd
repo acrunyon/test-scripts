@@ -2,7 +2,8 @@
 title: "Test document"
 author: "Amber"
 date: "5/12/2021"
-output: word_document
+output: bookdown::word_document2 #critical to get al-text & numbered fig caption
+
 ---
 
 ```{r setup, include=FALSE}
@@ -20,11 +21,12 @@ summary(cars)
 ```
 
 ## Including Plots
-
 You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r pressure, echo=FALSE, fig.cap='Here is a nice alt text!', out.width='80%', fig.asp=.75, fig.align='center', dev = c("png", "jpeg", "pdf"), fig.path = "_book/figures//"}
+par(mar = c(4, 4, .1, .1))
+plot(pressure, type = 'b', pch = 19)
 ```
+\
+*Figure \@ref(fig:pressure). This is actually the caption!*
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
