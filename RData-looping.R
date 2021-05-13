@@ -20,6 +20,7 @@ for (n in 1:length(parks)){
   names(Future_Means) = c("GCM", "PrecipCustom", "TmaxCustom", "TminCustom")    # , "Wind"
   Future_Means$TavgCustom = (Future_Means$TmaxCustom + Future_Means$TminCustom)/2
   Future_Means$PrecipCustom = Future_Means$PrecipCustom *365
+  assign(paste0(park,"_Future_Means"), Future_Means)
   # Print progress
   if (n == length(parks)) cat(paste0(round(n / length(parks) * 100), '% completed',': Done'))
   else cat(paste0(round(n / length(parks) * 100), '% completed'),"\r")
@@ -31,4 +32,11 @@ end.time = Sys.time()
 run.time = end.time-start.time
 run.time
 
+### Code differentiating between damp/dry
+
+
+
 #41 secs for 3 parks, would take 91 mins for 400 parks
+
+
+
