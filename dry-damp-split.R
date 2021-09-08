@@ -20,8 +20,10 @@ for (n in 1:length(parks)){
 }
 
 ### Code differentiating between damp/dry
-mean(APIS_Future_Means$PrecipCustom)
-mean(CACO_Future_Means$PrecipCustom)
-mean(MACA_Future_Means$PrecipCustom)
+mean(APIS_Future_Means$DeltaPr)
+mean(CACO_Future_Means$DeltaPr)
+mean(MACA_Future_Means$DeltaPr)
 
+mean(MACA_Future_Means$DeltaPr[which(MACA_Future_Means$CF == "Warm Dry")])
+mean(CACO_Future_Means$DeltaPr[which(CACO_Future_Means$CF == "Hot Damp")])
 
