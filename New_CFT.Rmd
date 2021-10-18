@@ -10,7 +10,7 @@ output: html_document
 The purpose of this package is to make it easy to download and process
 climate data from the … database.
 
-``` r
+```{r}
 library(tidyverse)
 library(tidync)
 library(osmdata)
@@ -22,7 +22,7 @@ library(stars)
 
 # Use read-only mode to find available data without initiating a full download.
 
-``` r
+```{r}
 available_data <- function(web_link = "https://cida.usgs.gov/thredds/dodsC/macav2metdata_daily_future",
                            verbose = TRUE){
   
@@ -170,104 +170,51 @@ inputs <- available_data()
 
 ## not a file: 
 ## ' https://cida.usgs.gov/thredds/dodsC/macav2metdata_daily_future '
-## 
-## ... attempting remote connection
 
-## Connection succeeded.
 
-## Reading results
+``` {r}
+input_times <- inputs$available_times %>% add_column(index = 1) 
 
-## Converting into an R data.table
-
-# Filter the results from available_data() to specify which data to actually download.
-
-## Filter time
-
-``` r
-# Year 2034
-time_min <- 72048
-time_max <- 73048
-
-input_times <- inputs$available_times %>% add_column(index = 0) 
-input_times[which(inputs$available_times[,1] > time_min & inputs$available_times[,1] < time_max ),3] <- 1
-
-tail(input_times)
+# Input times for a particular timeframe
+# # Year 2034
+# time_min <- 72048
+# time_max <- 73048
+# 
+# input_times <- inputs$available_times %>% add_column(index = 0) 
+# input_times[which(inputs$available_times[,1] > time_min & inputs$available_times[,1] < time_max ),3] <- 1
+# 
+# tail(input_times)
 ```
 
-##       Available times      dates index
-## 34328           73043 2099-12-26     1
-## 34329           73044 2099-12-27     1
-## 34330           73045 2099-12-28     1
-## 34331           73046 2099-12-29     1
-## 34332           73047 2099-12-30     1
-## 34333           73048 2099-12-31     0
 
-## Filter variable names
+``` {r}
+# input_variables <- inputs$variable_names %>% 
+#   filter(`Variable abbreviation` == c("pr","tasmax","tasmin")) %>% 
+#   filter(`Model abbreviation`== c("MIROC-ESM-CHEM")) %>% 
+#   filter(Scenario == c("RCP 4.5", "RCP 8.5")) %>% 
+#   pull("Available variable")
 
-``` r
-input_variables <- inputs$variable_names %>% 
-  filter(Variable == "Specific Humidity") %>% 
-  filter(Model == c("Beijing Normal University - Earth System Model", "Hadley Global Environment Model 2 - Earth System 365 (day)")) %>%
-  filter(Scenario == c("RCP 4.5", "RCP 8.5")) %>% 
+input_variables<-inputs$variable_names %>% filter(`Variable abbreviation` %in% c("pr","tasmax","tasmin")) %>% 
   pull("Available variable")
 
 input_variables
+
 ```
 
-## [1] "huss_BNU-ESM_r1i1p1_rcp45"       "huss_HadGEM2-ES365_r1i1p1_rcp85"
 
-# Establish area of interst (AOI) by bounding box
+``` {r}
+site = "WICA"
+centroids <- st_read("C:/Users/achildress/OneDrive - DOI/Documents/GIS/nps_boundary_centroids/nps_boundary_centroids.shp")
 
-``` r
-bb <- getbb("yellowstone")
-bb_manual <- bb
-bb_manual[1,1] <- -111.15594815937659
-bb_manual[1,2] <- -109.8305463801207
-bb_manual[2,1] <- 44.12354048271325
-bb_manual[2,2] <- 45.11911641599412
-
-my_boundary <- opq(bb_manual) %>% 
-  add_osm_feature(key = "boundary", value = "national_park") %>% 
-  osmdata_sf() 
-
-my_boundary
+bb <- st_bbox(centroids)
 ```
-
-## Object of class 'osmdata' with:
-##                  $bbox : 44.1235404827133,-111.155948159377,45.1191164159941,-109.830546380121
-##         $overpass_call : The call submitted to the overpass API
-##                  $meta : metadata including timestamp and version numbers
-##            $osm_points : 'sf' Simple Features Collection with 31397 points
-##             $osm_lines : 'sf' Simple Features Collection with 224 linestrings
-##          $osm_polygons : 'sf' Simple Features Collection with 11 polygons
-##        $osm_multilines : NULL
-##     $osm_multipolygons : 'sf' Simple Features Collection with 5 multipolygons
-
-``` r
-boundaries <- my_boundary$osm_multipolygons
-pulled_bb <- st_bbox(boundaries)
-pulled_bb
-```
-
-##       xmin       ymin       xmax       ymax 
-## -113.27781   41.90143 -108.69849   45.10896
-
-``` r
-basemap <- ggplot(data = boundaries) +
-  geom_sf(fill = "cornflowerblue") +
-  geom_sf_text(aes(label = boundaries$name)) 
-
-basemap
-```
-
-![](testerFile_files/figure-markdown_github/plot%20of%20area%20of%20interest-1.png)
 
 # Download data by AOI, filtered times, and filtered variable list
 
-``` r
+``` {r}
 Pulled_data <- inputs$src %>% 
-  hyper_filter(lat = lat <= c(pulled_bb[4]+0.05) & lat >= c(pulled_bb[2]-0.05)) %>% 
-  hyper_filter(lon = lon <= c(pulled_bb[3]+0.05) & lon >= c(pulled_bb[1]-0.05)) %>% 
+  hyper_filter(lat = lat <= c(bb[4]+0.05) & lat >= c(bb[2]-0.05)) %>% 
+  hyper_filter(lon = lon <= c(bb[3]+0.05) & lon >= c(bb[1]-0.05)) %>% 
   hyper_filter(time =  input_times[,3] == 1) %>% 
   hyper_tibble(select_var = input_variables
   ) %>%
@@ -275,24 +222,9 @@ Pulled_data <- inputs$src %>%
 
 head(Pulled_data)
 ```
+STOPPED RUNNING HERE
 
-## Simple feature collection with 6 features and 3 fields
-## Attribute-geometry relationship: 3 constant, 0 aggregate, 0 identity
-## Geometry type: POINT
-## Dimension:     XY
-## Bounding box:  xmin: -113.314 ymin: 41.85448 xmax: -113.1057 ymax: 41.85448
-## Geodetic CRS:  WGS 84
-## # A tibble: 6 × 4
-##   `huss_BNU-ESM_r1i1p1_rcp45` `huss_HadGEM2-ES365_r1i1p1_rcp85`  time             geometry
-##                         <dbl>                             <dbl> <dbl>          <POINT [°]>
-## 1                     0.00491                           0.00431 72049  (-113.314 41.85448)
-## 2                     0.00488                           0.00430 72049 (-113.2723 41.85448)
-## 3                     0.00510                           0.00457 72049 (-113.2307 41.85448)
-## 4                     0.00521                           0.00464 72049  (-113.189 41.85448)
-## 5                     0.00536                           0.00473 72049 (-113.1473 41.85448)
-## 6                     0.00545                           0.00491 72049 (-113.1057 41.85448)
-
-``` r
+```{r} 
 check_filter <- Pulled_data %>% filter(time == min(Pulled_data$time))
 
 ggplot() +
@@ -305,7 +237,7 @@ ggplot() +
 
 # Melt downloaded points into a raster before aggretation
 
-``` r
+``` {r}
 rast <- st_rasterize(Pulled_data)
 plot(rast)
 ```
@@ -316,7 +248,7 @@ plot(rast)
 
 ## Aggregate to polygon (faster method)
 
-``` r
+``` {r}
 extracted <- st_extract(rast, boundaries$geometry) %>% st_as_sf()
 
 ggplot(data=extracted) +
@@ -328,14 +260,14 @@ ggplot(data=extracted) +
 
 ![](testerFile_files/figure-markdown_github/aggregate%20to%20polygon-1.png)
 
-``` r
+``` {r}
 cube <- src_slc %>% hyper_tbl_cube(select_var = c("huss_BNU-ESM_r1i1p1_rcp45"))
 cube
 ```
 
 ## Clip raster with polygon (slower method)
 
-``` r
+``` {r}
 small_pulled <- Pulled_data %>%
   filter(time == 72049)
 intersection <- st_intersection(x = small_pulled, y = boundaries$geometry)
@@ -343,7 +275,7 @@ intersection <- st_intersection(x = small_pulled, y = boundaries$geometry)
 names(intersection)[1:2] <- c("Humidity","b")
 ```
 
-``` r
+``` {r}
 ggplot() +
   geom_sf(data = intersection, aes(color=Humidity)) +
   scale_color_continuous(low="thistle2", high="darkred", 
@@ -357,7 +289,7 @@ ggplot() +
 
 ## Aggregate to River segment
 
-``` r
+``` {r}
 river <- opq(bb_manual) %>%
   add_osm_feature(key = "waterway", value = "river") %>%
   osmdata_sf() 
@@ -374,7 +306,7 @@ river
 ##        $osm_multilines : 'sf' Simple Features Collection with 16 multilinestrings
 ##     $osm_multipolygons : NULL
 
-``` r
+``` {r}
 river_sub <- st_buffer(river$osm_lines, 2200)
 extracted_river <- st_extract(rast,  river_sub$geometry ) %>% st_as_sf()
 head(extracted_river)
@@ -393,11 +325,11 @@ head(extracted_river)
 ## 5               0.002350000                     0.003490000 73047 POLYGON ((-110.8453 44.6551...
 ## 6               0.002395000                     0.003525000 73047 POLYGON ((-110.8306 44.5611...
 
-``` r
+``` {r}
 #colnames(extracted_river)[1] <- "var1"
 ```
 
-``` r
+``` {r}
 ggplot(data=extracted_river) +
   geom_sf(aes(fill = huss_BNU.ESM_r1i1p1_rcp45), size=0) +
   coord_sf(crs = 4326, xlim = c(pulled_bb[1], pulled_bb[3]), 
@@ -415,7 +347,7 @@ ggplot(data=extracted_river) +
 
 ## Aggregate to road segment
 
-``` r
+``` {r}
 roads <- opq(bb_manual) %>%
   add_osm_feature(key = 'highway', value = 'primary') %>%
   add_osm_feature(key = 'highway', value = 'secondary') %>%
@@ -443,7 +375,7 @@ extracted_roads
 ## 9                0.002350000                       0.0036850 73047 POLYGON ((-111.0784 44.8061...
 ## 10               0.002350000                       0.0036100 73047 POLYGON ((-111.1275 44.6592...
 
-``` r
+``` {r}
 ggplot(data=extracted_roads) +
   geom_sf(aes(fill = huss_BNU.ESM_r1i1p1_rcp45), size=0) +
   coord_sf(crs = 4326) +
