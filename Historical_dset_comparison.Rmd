@@ -6,9 +6,51 @@ output: html_document
 ---
 This script compares distributions between MACA historical and gridmet to see if we can use observed historical for comparison instead of projected to significantly speed up download times.
 
-```{r,echo=FALSE, message=FALSE}
+## First pull data
+
+```{r, echo=FALSE, message=FALSE}
 rm(list=ls())
+library(dplyr)
+library(ggplot2)
 data.dir <- "C:/Users/achildress/DOI/NPS-NRSS-CCRP-FC Science Adaptation - Documents/General/RSS Stuff/Parks/CARE/RCF with WB1.1_WW HD/data/park-specific/"
 load(paste0(data.dir,"output/CARE_38.383553_-111.283004_Final_Environment.RData"))
 
 grid <- read.csv(paste0(data.dir,"/input/GridMet.csv"))
+```
+
+MACA projected historical period = 1950-2005
+
+Gridmet period is 1979-present, but period used for training MACA = 1979-2012 
+https://climate.northwestknowledge.net/MACA/MACAtrainingdata.php
+
+According to https://climate.northwestknowledge.net/MACA/MACAfaq.php, at least 30 years of observed data should be used, it it's preferable to use whole reference to avoid statistical differences of change.
+
+```{r, echo=FALSE, message=FALSE}
+grid %>% mutate(Date = as.Date(grid$Date,format="%Y-%m-%d"),
+                yr = format(grid$Date,format="%Y")) %>%
+  filter(yr < 2012) -> grid
+  
+
+ALL_HIST %>% mutate(Date = as.Date(ALL_HIST$Date,format="%Y-%m-%d"),
+                yr = format(ALL_HIST$Date,format="%Y")) %>%
+  select(Date,GCM,PrecipCustom,TmaxCustom,TminCustom,yr) -> AH
+
+aggregate(cbind(PrecipCustom,TmaxCustom)~GCM,AH,mean)
+c<- aggregate(cbind(TmaxCustom,TminCustom,PrecipCustom)~GCM,AH,summary)
+
+AH %>% group_by(GCM) %>%
+    summarise(across(starts_with('val'), mean))
+summary(grid)
+
+ggplot(data=AH, aes(x=PrecipCustom, group=GCM, fill=GCM)) +
+    geom_density(adjust=1.5) +
+    # theme_ipsum() +
+    facet_wrap(~GCM) +
+    theme(
+      legend.position="none",
+      panel.spacing = unit(0.1, "lines"),
+      axis.ticks.x=element_blank()
+    )
+
+
+```
