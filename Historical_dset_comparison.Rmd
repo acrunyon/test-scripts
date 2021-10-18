@@ -1,0 +1,14 @@
+---
+title: "Historical dataset comparison"
+author: "Amber Runyon"
+date: "10/18/2021"
+output: html_document
+---
+This script compares distributions between MACA historical and gridmet to see if we can use observed historical for comparison instead of projected to significantly speed up download times.
+
+```{r,echo=FALSE, message=FALSE}
+rm(list=ls())
+data.dir <- "C:/Users/achildress/DOI/NPS-NRSS-CCRP-FC Science Adaptation - Documents/General/RSS Stuff/Parks/CARE/RCF with WB1.1_WW HD/data/park-specific/"
+load(paste0(data.dir,"output/CARE_38.383553_-111.283004_Final_Environment.RData"))
+
+grid <- read.csv(paste0(data.dir,"/input/GridMet.csv"))
