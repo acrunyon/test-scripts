@@ -19,11 +19,28 @@ cLon = 180 - Lon
 SiteID <- "SCBL"
 
 ### DEFINE THE URL
-###urltotal<-"http://convection.meas.ncsu.edu:8080/thredds/dodsC/pinemap/maca/past/macav2livneh_pr_bcc-csm1-1-m_historical_1970_1989_CONUS.nc"
-urltotal<-"http://thredds.northwestknowledge.net:8080/thredds/dodsC/macav2livneh_huss_BNU-ESM_r1i1p1_historical_1950_2005_CONUS_daily_aggregated.nc"
+vars = c("pr", "tasmax", "tasmin")
+scens = c("rcp45", "rcp85")
+set = c("historical_1950_2005","rcp45_2006_2099","rcp85_2006_2099")
+
+longVar = c("precipitation", "daily_maximum_temperature", "daily_minimum_temperature")
+
+GCMs = c('bcc-csm1-1','bcc-csm1-1-m','BNU-ESM','CanESM2','CCSM4','CNRM-CM5','CSIRO-Mk3-6-0',
+         'GFDL-ESM2G','GFDL-ESM2M','HadGEM2-CC365','HadGEM2-ES365',
+         'inmcm4','IPSL-CM5A-MR','IPSL-CM5A-LR','IPSL-CM5B-LR',
+         'MIROC5','MIROC-ESM','MIROC-ESM-CHEM','MRI-CGCM3','NorESM1-M')
+
+GCM_ensemble = paste0(GCMs,"_r1i1p1"); GCM_ensemble[5] <- "CCSM4_r6i1p1"
+
+df = data.frame()
+# loop to download/work with data"
+for (G in 1:length(GCM_ensemble)){
+  for (s in 1:length(set)){
+    for (v in 1:length(vars)){
+url = paste0("http://thredds.northwestknowledge.net:8080/thredds/dodsC/agg_macav2metdata_",vars[v],"_",GCM_ensemble[G],"_",set[s],"_CONUS_daily.nc")
 
 ## OPEN THE FILE
-nc <- nc_open(urltotal)
+nc <- nc_open(url)
 
 ## SHOW SOME METADATA 
 nc
@@ -50,14 +67,13 @@ time <- ncvar_get(nc, "time", start=c(1),count=c(endcount))
 time=as.Date(time, origin="1900-01-01") ##note: assumes leap years! http://stat.ethz.ch/R-manual/R-patched/library/base/html/as.Date.html
 # PUT EVERYTHING INTO A DATA FRAME
 c <- data.frame(time,data)
-
+names(c)[2] <- varName
+c$GCM = GCMs[1]
+c$rcp = sub("\\_.*", "", set[1])
+df = 
 ## CLOSE THE FILE
 nc_close(nc)
-
-## PLOT THE DATA 
-plot(c$time,c$data,main=paste("Daily ",var," for ",c$time[1]," through ",c$time[nrow(c)], " at ",lat,",",lon,sep=""),xlab="Date",ylab="Precipitation (mm)")
-
-
-#######################################3
-
+    }
+  }
+}
 
