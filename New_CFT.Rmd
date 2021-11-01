@@ -205,6 +205,7 @@ input_variables
 ``` {r}
 site = "WICA"
 centroids <- st_read("C:/Users/achildress/OneDrive - DOI/Documents/GIS/nps_boundary_centroids/nps_boundary_centroids.shp")
+centroids <- filter(centroids, UNIT_CODE == site)
 
 bb <- st_bbox(centroids)
 ```
@@ -212,15 +213,24 @@ bb <- st_bbox(centroids)
 # Download data by AOI, filtered times, and filtered variable list
 
 ``` {r}
-Pulled_data <- inputs$src %>% 
-  hyper_filter(lat = lat <= c(bb[4]+0.05) & lat >= c(bb[2]-0.05)) %>% 
-  hyper_filter(lon = lon <= c(bb[3]+0.05) & lon >= c(bb[1]-0.05)) %>% 
-  hyper_filter(time =  input_times[,3] == 1) %>% 
-  hyper_tibble(select_var = input_variables
-  ) %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326, agr = "constant")
+df = data.frame()
 
-head(Pulled_data)
+system.time(
+  for(i in 1:length(input_variables)) {
+Pulled_data <- inputs$src %>% 
+  hyper_filter(lat = lat <= c(bb[4]+0.02) & lat >= c(bb[2]-0.02)) %>% 
+  hyper_filter(lon = lon <= c(bb[3]+0.02) & lon >= c(bb[1]-0.02)) %>% 
+  hyper_filter(time =  input_times[,3] == 1) %>% 
+  hyper_tibble(select_var = input_variables[i]) 
+
+df1 <- Pulled_data %>% group_by(time) %>% summarise_at(1,mean)
+df1$GCM = sub("^[^_]*_", "",names(df1[2]))
+df1$variable = sub("_.*","", names(df1[2]))
+names(df1)[2] <- "value"
+df = rbind(df,df1)
+}
+)
+
 ```
 STOPPED RUNNING HERE
 
@@ -228,7 +238,7 @@ STOPPED RUNNING HERE
 check_filter <- Pulled_data %>% filter(time == min(Pulled_data$time))
 
 ggplot() +
-  geom_sf(data = boundaries, fill = "cornflowerblue") +
+  # geom_sf(data = boundaries, fill = "cornflowerblue") +
   geom_sf(data = check_filter, color = "red", size=0.1) +
   coord_sf(crs = 4326) 
 ```
