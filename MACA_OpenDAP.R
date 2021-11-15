@@ -12,6 +12,9 @@
 
 ## LOAD THE REQUIRED LIBRARY
 library(ncdf4)
+library(tidync)
+library(stars)
+library(dplyr)
 
 Lat <- 41.83476
 Lon = -103.707
@@ -101,48 +104,25 @@ available_times$index = 1
 Pulled_data <- src %>% 
   hyper_filter(lat = lat <= c(bb[4]+0.02) & lat >= c(bb[2]-0.02)) %>% 
   hyper_filter(lon = lon <= c(365 + bb[3]+0.02) & lon >= c(365+ bb[1]-0.02)) %>% 
-  hyper_tibble(select_var = "precipitation")
+  hyper_tibble(select_var = "precipitation") 
 
-s<-st_as_stars(Pulled_data,values="precipitation",dimensions=st_dimensions(lat=lat,lon=lon,time=time),crs=4326)
-  
-  st_as_sf(coords = c("lon", "lat"), crs = 4326, agr = "constant")
+Pulled_data %>% mutate(lon_2 = lon - 365) -> Pulled_data
 
-p <- st_as_stars(Pulled_data)
+s <- st_as_stars(Pulled_data, dims = c("lon_2", "lat", "time"),crs=4326)
 
-head(Pulled_data)
+dev.off()
 
-check_filter <- Pulled_data %>% filter(time == min(Pulled_data$time))
+park <- st_transform(boundary, 4326) # in order to use auto zoom feature, must be in lat/long
 
-ggplot() +
-  geom_sf(data = boundaries, fill = "cornflowerblue") +
-  geom_sf(data = check_filter, color = "red", size=0.1) +
-  coord_sf(crs = 4326) 
+Sp_park= as(park, "Spatial")
+ggplot() + # Resolution is course
+  geom_stars(data = s[,,,40], alpha = 0.8) + 
+  geom_sf(data = park, inherit.aes = FALSE, aes(color = "Park"), fill = NA,lwd=1) +
+  # facet_wrap("time") +
+  # scale_fill_viridis() + 
+  #coord_equal() + 
+  # theme_map() +
+  theme(legend.position = "bottom") +
+  theme(legend.key.width = unit(2, "cm"))
 
-
-df = data.frame()
-
-# system.time(
- Pulled_data <- src %>% 
-      hyper_filter(lat = lat <= c(bb[4]+0.02) & lat >= c(bb[2]-0.02)) %>% 
-      hyper_filter(lon = lon <= c(360 + bb[3]+0.02) & lon >= c(360 + bb[1]-0.02))
- 
- st_as_stars(Pulled_data)
- 
- stars::read_stars(Pulled_data)
- 
- 
- cube <- hyper_tbl_cube(src %>%
-                          activate(precipitation), lon = lon <= c(360 + bb[3]+0.02) & lon >= c(360 + bb[1]-0.02),
-                        lat = lat <= c(bb[4]+0.02) & lat >= c(bb[2]-0.02))
-
-     
-    df1 <- Pulled_data %>% group_by(time) %>% summarise_at(1,mean)
-    df1$GCM = sub("^[^_]*_", "",names(df1[2]))
-    df1$variable = sub("_.*","", names(df1[2]))
-    names(df1)[2] <- "value"
-    df = rbind(df,df1)
-)
-
-
-# data <- ncvar_get(nc, varName, start=c(Lon_index[1],Lat_index[1],1),count=c(length(Lon_index),length(Lat_index),endcount))
 
