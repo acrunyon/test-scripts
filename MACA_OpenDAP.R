@@ -15,6 +15,9 @@ library(ncdf4)
 library(tidync)
 library(stars)
 library(dplyr)
+library(tidyr)
+rm(list=ls())
+gc()
 
 Lat <- 41.83476
 Lon = -103.707
@@ -36,6 +39,7 @@ GCMs = c('bcc-csm1-1','bcc-csm1-1-m','BNU-ESM','CanESM2','CCSM4','CNRM-CM5','CSI
 GCM_ensemble = paste0(GCMs,"_r1i1p1"); GCM_ensemble[5] <- "CCSM4_r6i1p1"
 
 df = data.frame()
+start = Sys.time()
 # loop to download/work with data"
 for (G in 1:length(GCM_ensemble)){
   for (s in 1:length(set)){
@@ -70,15 +74,20 @@ time <- ncvar_get(nc, "time", start=c(1),count=c(endcount))
 time=as.Date(time, origin="1900-01-01") ##note: assumes leap years! http://stat.ethz.ch/R-manual/R-patched/library/base/html/as.Date.html
 # PUT EVERYTHING INTO A DATA FRAME
 c <- data.frame(time,data)
-names(c)[2] <- varName
+c$var = vars[v]
 c$GCM = GCMs[1]
 c$rcp = sub("\\_.*", "", set[1])
-
+df = rbind(df,c)
 ## CLOSE THE FILE
 nc_close(nc)
     }
   }
 }
+
+df %>% pivot_wider(names_from = var, values_from = data) -> Historical_all
+
+end = Sys.time()
+elapsed = end - start
 
 #### Lat/lon spatial
 # centroids <- st_read("C:/Users/achildress/OneDrive - DOI/Documents/GIS/nps_boundary_centroids/nps_boundary_centroids.shp")
@@ -117,7 +126,7 @@ park <- st_transform(boundary, 4326) # in order to use auto zoom feature, must b
 Sp_park= as(park, "Spatial")
 ggplot() + # Resolution is course
   geom_stars(data = s[,,,40], alpha = 0.8) + 
-  geom_sf(data = park, inherit.aes = FALSE, aes(color = "Park"), fill = NA,lwd=1) +
+  geom_sf(data = park, inherit.aes = FALSE, colour="yellow", fill = NA,lwd=1) +
   # facet_wrap("time") +
   # scale_fill_viridis() + 
   #coord_equal() + 
