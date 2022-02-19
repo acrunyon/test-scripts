@@ -41,8 +41,8 @@ GCM_ensemble = paste0(GCMs,"_r1i1p1"); GCM_ensemble[5] <- "CCSM4_r6i1p1"
 df = data.frame()
 start = Sys.time()
 # loop to download/work with data"
-for (G in 1:length(GCM_ensemble)){
-  for (s in 1:length(set)){
+for (G in 1:2){   #length(GCM_ensemble)){
+  # for (s in 1:length(set)){
     for (v in 1:length(vars)){
 url = paste0("http://thredds.northwestknowledge.net:8080/thredds/dodsC/agg_macav2metdata_",vars[v],"_",GCM_ensemble[G],"_",set[s],"_CONUS_daily.nc")
 
@@ -82,7 +82,7 @@ df = rbind(df,c)
 nc_close(nc)
     }
   }
-}
+# }
 
 df %>% pivot_wider(names_from = var, values_from = data) -> Historical_all
 
