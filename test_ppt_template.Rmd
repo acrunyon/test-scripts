@@ -2,12 +2,17 @@
 title: "Test_template"
 author: "Amber Runyon"
 date: "4/12/2022"
-output: powerpoint_presentation
+output: 
+  powerpoint_presentation:
+    reference_doc: Rmd_ppt_template_test.pptx
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
+
+--
+<!-- Info for merging different decks https://stackoverflow.com/questions/61468429/bind-or-merge-multiple-powerpoints-in-r -->
 
 ## R Markdown
 
