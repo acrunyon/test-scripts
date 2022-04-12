@@ -55,9 +55,10 @@ r[[1]]
 
 # from https://www.r-bloggers.com/2015/01/using-rvest-to-scrape-an-html-table/
 url <- "https://www.ncdc.noaa.gov/cag/county/time-series/CO-069/tavg/all/12/1895-2020"
+url <-"https://www.ncdc.noaa.gov/cag/county/time-series/CO-069/tavg/ann/12/1895-2021"
 test <- url %>%
   read_html() %>%
-  html_element(xpath='//*[@id="valuesTable"]') %>%
+  html_node(xpath='//*[@id="valuesTable"]') %>%
   html_table()
 test <- test[[1]]
 
@@ -80,4 +81,4 @@ x
 
 
 x_xml <- xmlParse(x)
-xmlToDataFrame(nodes=)
+xmlToDataFrame(nodes=getNodeSet(x_xml, "//data"))
