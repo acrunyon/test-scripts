@@ -97,7 +97,6 @@ geom_text_repel(hjust=0,vjust=0,aes(label=GCM,colour=col))
 hi_cf$col <- as.factor(hi_cf$col)
 
 
-
 HI_fig <- ggplot() + 
   geom_sf(data = hi_region, colour = "black", fill = "wheat2") + 
   geom_point(data = hi_cf, mapping = aes(x = Lon, y = Lat, shape = Combined_2, colour = Combined_2 ), size = 2.5) + 
@@ -230,7 +229,20 @@ SE_fig <- ggplot() +
 ggsave(paste0(OutDir,"SE_region.pdf"), plot = SE_fig,dpi=300,width=10,height=10)
 
 
+cfs2<- cf %>% mutate(CFs = as.factor(ifelse(Combined_2 == "CFs", "CFs","None")),
+                     CFs_hypo = as.factor(ifelse(REGION %in% c("PW","NE","IM","NC","SE","MW"), "CFs", "None")))
 
+NPS_fig <- 
+  ggplot() + geom_sf(data = regions, colour = "black", fill = "wheat2") + 
+  geom_point(data = cfs2, mapping = aes(x = Lon, y = Lat, shape = CFs_hypo, colour = CFs_hypo ), size = 2.5) + 
+  # geom_label_repel(data = cf, aes(x = Lon, y = Lat, label = UNIT_CODE, fill = Combined_2), size = 2,min.segment.length = 0, segment.color = 'grey50', show.legend=F) +
+  ggtitle("Climate Product Production") +
+  scale_color_manual(values=c("blue", "black"),drop=FALSE) + 
+  # scale_fill_manual(values = c("white", "white", "white", "white","grey75"),drop=FALSE) +
+  labs(colour = "Climate Product(s)", shape = "Climate Product(s)") +
+  scale_shape_manual(values=c(17,3),drop=FALSE) + 
+  coord_sf()
+NPS_fig
 
 
 
