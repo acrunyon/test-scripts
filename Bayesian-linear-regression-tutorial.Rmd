@@ -1,0 +1,51 @@
+---
+title: "Bayesian Linear Regression"
+output: html_notebook
+---
+#Introduction
+
+We want to use Bayesian linear regression (instead of OLS) in trend analysis. Here is tutorial learning how to conduct
+
+https://towardsdatascience.com/introduction-to-bayesian-linear-regression-e66e60791ea7
+
+Bayesian vs Frequentist linear regression
+
+Frequentist
+	- model assumes response var (y) is linear combination of weights multiplied by a set of predictor variables (x). Full formula includes error term to account for random sampling noise.
+	- Goal of linear model from training data is to find the coefficients that best explain the data. Best explanation is taken to mean the coefficients that minimize the residual sum or squares (RSS) - total of the squared differences between the known values and predicted model outputs.
+	- Obtain a single estimate for model parameters based only on the training data. Model completely informed by the data
+
+Bayesian
+	- Formulate probability distributions rather than point estimates. Response y is not estimated as a single value, but is assumed to be drawn from a probability distribution
+	- Aim is not to find the single 'best' value of the model parameters, but to determine the posterior distribution for the model parameters
+		○ Response is generated from a PD and model parameters come from a distribution as well
+		○ Posterior probability of the model parameters is conditional upon the training inputs and outputs
+		
+		
+		
+		
+		
+	- Benefits of Bayesian
+		○ Priors - if we have knowledge or a guess for what model parameters should be, we can include in model - contrasting to freq which assumes everythign there is to know about parameters comes from the data
+		○ Posterior - result is a distribution of possible model parameters based on the data and the prior, allowing to quantify uncertainty about model if we have fewer data points, posterior disbn will be more spread out
+			§ As amount of data increases, likelihood washes out the prior. In case of infinite data, outputs for parameters converge to values obtained by OLS
+	- start with initial estimate - prior - and as we gather more evidence, the model becomes less wrong
+
+Implementing Bayesian
+	- To evaluate posterior distribution for model parameters, use sampling methods to draw samples from posterior in order to approximate it. Technique used to draw random samples from dsbn is one application of Monte Carlo -- most common being Markov Chain Monte Carlo 
+	- Specify priors for the model parameters (if unknown use normal)
+	- create a model mapping the training inputs to the training outputs
+	- have MCMC algorithm draw samples from posterior distribution for the model parameters
+Results in posterior distribution for parameters that can be inspected to see what's going on
+
+```{r}
+y=2+7
+x=4-1
+x*y
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
