@@ -93,8 +93,8 @@ Exposure.Data$HI.Dan.CF2 <- D_Annual$HI.Dan[3]
 Exposure.Data$Hist_return50 <- round(recurrence$GEV[which(recurrence$return == 50 & recurrence$CF=="Historical")],1)
 Exposure.Data$CF1_return50  <- round(recurrence$GEV[which(recurrence$return == 50 & recurrence$CF==CFs[1])],1)
 Exposure.Data$CF2_return50  <- round(recurrence$GEV[which(recurrence$return == 50 & recurrence$CF==CFs[2])],1)
-Exposure.Data$CF1_return.year <- as.integer(recurrence %>% filter(CF == CFs[1]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% select(return))
-Exposure.Data$CF2_return.year <- as.integer(recurrence %>% filter(CF == CFs[2]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% select(return))
+Exposure.Data$CF1_return.year <- as.integer(recurrence %>% filter(CF == CFs[1]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% dplyr::select(return))
+Exposure.Data$CF2_return.year <- as.integer(recurrence %>% filter(CF == CFs[2]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% dplyr::select(return))
 Exposure.Data$HistPrecip95 <- HistPrecip95
 Exposure.Data$Hist.meanWB<-mean(AnnualWB$sum_d.in[which(AnnualWB$year<=2012)])
 Exposure.Data$CF1.WBdelta <- mean(AnnualWB$sum_d.in[which(AnnualWB$year>=Yr-Range/2 & AnnualWB$year<= Yr+Range/2 & 
