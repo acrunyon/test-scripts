@@ -43,8 +43,10 @@ recurrence <- read.csv(paste0(TableDir, "precip_recurrence_interval.csv"))
 AnnualWB <- read.csv(paste0(TableDir,"WB-Annual.csv")) %>% 
   left_join(WB_GCMs,by="GCM") %>% 
   mutate(sum_d.in = sum_d.mm/ 25.4,
+         sum_aet.in = sum_aet.mm / 25.4,
     CF = replace_na(CF,"Historical"),
     CF = factor(CF, levels=c("Historical",CFs)))
+Drought.char <- read.csv(paste0(TableDir, "Drought_characteristics.csv"))
 
 
 #Historical Data
@@ -95,7 +97,7 @@ Exposure.Data$CF1_return50  <- round(recurrence$GEV[which(recurrence$return == 5
 Exposure.Data$CF2_return50  <- round(recurrence$GEV[which(recurrence$return == 50 & recurrence$CF==CFs[2])],1)
 Exposure.Data$CF1_return.year <- as.integer(recurrence %>% filter(CF == CFs[1]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% dplyr::select(return))
 Exposure.Data$CF2_return.year <- as.integer(recurrence %>% filter(CF == CFs[2]) %>% slice(which.min(abs(GEV - Exposure.Data$Hist_return50))) %>% dplyr::select(return))
-Exposure.Data$HistPrecip95 <- HistPrecip95
+Exposure.Data$HistPrecip99 <- HistPrecip99
 Exposure.Data$Hist.meanWB<-mean(AnnualWB$sum_d.in[which(AnnualWB$year<=2012)])
 Exposure.Data$CF1.WBdelta <- mean(AnnualWB$sum_d.in[which(AnnualWB$year>=Yr-Range/2 & AnnualWB$year<= Yr+Range/2 & 
                           AnnualWB$CF == CFs[1])]) - Exposure.Data$Hist.meanWB
@@ -103,3 +105,28 @@ Exposure.Data$CF2.WBdelta <- mean(AnnualWB$sum_d.in[which(AnnualWB$year>=Yr-Rang
                                                             AnnualWB$CF == CFs[2])]) - Exposure.Data$Hist.meanWB
 
 write.csv(Exposure.Data, paste0(Output.directory,"-",SiteID,"-ExposureData.csv"))
+
+
+# Table for Appendix 1
+Appendix1 <- data.frame(matrix(nrow=12, ncol=3))
+row.names(Appendix1) <- c("ANN Tmean", "ANN Prcp", "Tmax over 95th", "HI Dangerous","50-yr return", "50-yr event",
+                         "Prcp over 95th", "Drt Dur", "Drt return", "Drt severity", "CWD", "AET")
+colnames(Appendix1) <- c(CFs, "Historical")
+
+Appendix1[1] <- c(Exposure.Data$DeltaTavg.CF1,Exposure.Data$DeltaPrcp.CF1,D_Annual$Tmax99[2],Exposure.Data$HI.Dan.CF1,Exposure.Data$CF1_return.year,
+                  Exposure.Data$CF1_return50,D_Annual$Tmax99[2],Drought.char$Duration[2],
+                  Drought.char$Drt.Free[2],Drought.char$Severity[2],Exposure.Data$CF1.WBdelta,
+                  mean(AnnualWB$sum_aet.in[which(AnnualWB$year>=Yr-Range/2 & AnnualWB$year<= Yr+Range/2 & 
+                                                                              AnnualWB$CF == CFs[1])]) - mean(AnnualWB$sum_aet.in[which(AnnualWB$year<=2012)]))
+
+Appendix1[2] <- c(Exposure.Data$DeltaTavg.CF2,Exposure.Data$DeltaPrcp.CF2,D_Annual$Tmax99[3],Exposure.Data$HI.Dan.CF2,Exposure.Data$CF2_return.year,
+                 Exposure.Data$CF2_return50,D_Annual$Tmax99[3],Drought.char$Duration[3],
+                 Drought.char$Drt.Free[3],Drought.char$Severity[3],Exposure.Data$CF2.WBdelta,
+                 mean(AnnualWB$sum_aet.in[which(AnnualWB$year>=Yr-Range/2 & AnnualWB$year<= Yr+Range/2 & 
+                                                                            AnnualWB$CF == CFs[2])]) - mean(AnnualWB$sum_aet.in[which(AnnualWB$year<=2012)]))
+
+Appendix1[3] <- c(D_Annual$TavgF[1],D_Annual$PrcpIn[2],D_Annual$Tmax99[1],D_Annual$HI.Dan[3],50,Exposure.Data$Hist_return50,
+                  D_Annual$Tmax99[1],Drought.char$Duration[1],Drought.char$Drt.Free[3],Drought.char$Severity[1],Exposure.Data$Hist.meanWB,
+                  mean(AnnualWB$sum_aet.in[which(AnnualWB$year<=2012)]))
+
+write.csv(Appendix1, paste0(Output.directory,"-",SiteID,"-Appendix1.csv"))
