@@ -6,10 +6,10 @@ library(raster)
 library(zoo)
 rm(list=ls())
 
-BP5000 <- nc_open("C:/Users/achildress/Documents/mean_temperature-5000BP-1989AD.nc")
+BP5000 <- nc_open("C:/Users/achildress/Documents/PaleoData/maximum_temperature-5000BP-1989AD.nc")
 BP5000
 
-BP5 <- read_ncdf("C:/Users/achildress/Documents/mean_temperature-5000BP-1989AD.nc")
+BP5 <- read_ncdf("C:/Users/achildress/Documents/PaleoData/maximum_temperature-5000BP-1989AD.nc")
 BP5
 
 plot(BP5000$var$`4000BP-3000BP/3109BP`)
