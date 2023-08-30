@@ -21,11 +21,11 @@ start.time <-Sys.time()
 future_all <- data.frame()
 for (i in 1:length(vars)){
 future1 = getMACA(AOI, 
-                 model = 2, varname = vars[i], scenario  = "rcp45",
-                 startDate = "2050-01-01", endDate = "2050-01-31")
+                 model = 20, varname = vars[i], scenario  = "rcp45",
+                 startDate = "2023-01-01", endDate = "2099-12-31")
 future2 = getMACA(AOI, 
-                  model = 2, varname = vars[i], scenario  = "rcp85",
-                  startDate = "2050-01-01", endDate = "2050-01-31")
+                  model = 20, varname = vars[i], scenario  = "rcp85",
+                  startDate = "2023-01-01", endDate = "2099-12-31")
 future<- left_join(future1, future2, by="date")
 
 future_long = future |>  
@@ -41,6 +41,8 @@ if(i==1) { future_all = FL } else {
 }
 end.time <- Sys.time()
 end.time-start.time
+### NOTE ###
+# Error at 2 hours b/c rhs only for 18 models and was looking for 20
 
 future1 = getMACA(AOI, 
                   model = 2, varname = vars[4], scenario  = "rcp45",
