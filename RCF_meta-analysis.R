@@ -1,13 +1,15 @@
 library(dplyr)
+library(plyr)
 library(ggplot2)
 library(openxlsx)
 library(sf)
 library(tidyverse);library(flextable);library(ggrepel)
 library(gridExtra)
 library(grid)
+library(ggpubr)
 
 rm(list=ls())
-OutDir <- "C:/Users/arunyon/3D Objects/Local-files/Meta-analysis/" #directory for output/plots
+OutDir <- "C:/Users/arunyon/3D Objects/Local-files/Meta-analysis/Output/" #directory for output/plots
 DataDir <- "D:/RCF/RCF_opened/"
 
 
@@ -28,24 +30,27 @@ ParkFolders <- paste0(DataDir,Parks,"/")
 CFs <- "WarmDry_HotWet/" #WarmWet_HotDry/, WarmDry_HotWet/
 CF.abbrev <- "WD-HW" #WW-HD, WD-HW
 
-MasterTable <- data.frame()
-for (i in 1:length(Parks)){
-  table.name <- paste0(ParkFolders[i],CFs,"tables/",Parks[i],"_",CF.abbrev,"_Plot_data.xlsx")
-  if(!file.exists(table.name)) {
-    next} else {
-  table <- read.xlsx(xlsxFile = table.name,sheet = 1)
-  drought <- read.csv(paste0(ParkFolders[i],CFs,"tables/Drought_characteristics.csv"))
-  table <- merge(table,drought,by="CF")
-  return <- read.csv(paste0(ParkFolders[i],CFs,"tables/precip_recurrence_interval.csv")) |> 
-    subset(return==50,select=c(CF,GEV))
-  table <- merge(table,return,by="CF")
-  table$park <- Parks[i]
-  MasterTable <- rbind(MasterTable,table)
-    }
-}
+# MasterTable <- data.frame()
+# for (i in 1:length(Parks)){
+#   table.name <- paste0(ParkFolders[i],CFs,"tables/",Parks[i],"_",CF.abbrev,"_Plot_data.xlsx")
+#   if(!file.exists(table.name)) {
+#     next} else {
+#   table <- read.xlsx(xlsxFile = table.name,sheet = 1)
+#   drought <- read.csv(paste0(ParkFolders[i],CFs,"tables/Drought_characteristics.csv"))
+#   table <- merge(table,drought,by="CF")
+#   return <- read.csv(paste0(ParkFolders[i],CFs,"tables/precip_recurrence_interval.csv")) |> 
+#     subset(return==50,select=c(CF,GEV))
+#   table <- merge(table,return,by="CF")
+#   table$park <- Parks[i]
+#   MasterTable <- rbind(MasterTable,table)
+#     }
+# }
+# write.csv(MasterTable,paste0(OutDir,"MasterTable.csv"),row.names=F,)
+MasterTable <- read.csv(paste0(OutDir,"MasterTable.csv"))
 
-MasterTable$CF[which(MasterTable$CF == "Warm Dry")] -> "Warm Damp"
-MasterTable$CF<-factor(MasterTable$CF,levels=c("Historical","Warm Damp","Hot Wet"))
+MasterTable$CF <- factor(MasterTable$CF)
+levels(MasterTable$CF)
+MasterTable$CF <- revalue(MasterTable$CF, c("Warm Dry"="Warm Damp"))
 
 MeanTable <- aggregate(.~CF,subset(MasterTable, select=-c(per,park)),mean)
 MeanTable$CF<-factor(MeanTable$CF,levels=c("Historical","Warm Damp","Hot Wet"))
@@ -61,7 +66,7 @@ PlotWidth = 9
 PlotHeight = 6
 
 colors5 <-  c("#6EB2D4", "#05689F", "#F6B294", "#CA0020","grey")
-colors2<- colors5[c(3,2)] # Select pair of climate futures - HotWet/WarmDry
+colors2<- colors5[c(2,3)] # Select pair of climate futures - HotWet/WarmDry
 colors3<-c("white",colors2)
 col<- c("darkgray", colors2)  # HotWet/WarmDry
 
@@ -106,7 +111,7 @@ var_bar_plot(MeanTable, "TminF", cols=colors3, ylab="(\u00B0F)",
              title=paste0("NER-Average annual minimum temperature (\u00B0F)\n in ", Yr, " vs ", BasePeriod),CFmethod = "Q")
 ggsave("TminF-Annual-bar.png", width = PlotWidth, height = PlotHeight, path = OutDir)
 
-var_bar_plot(MeanTable, "PrcpIn", cols=colors3, ylab="(\u00B0F)",
+var_bar_plot(MeanTable, "PrcpIn", cols=colors3, ylab="Inches/Yr",
              title=paste0("NER-Average annual precipitatoin (inches)\n in ", Yr, " vs ", BasePeriod),CFmethod = "Q")
 ggsave("PrcpIn-Annual-bar.png", width = PlotWidth, height = PlotHeight, path = OutDir)
 
@@ -135,15 +140,21 @@ var_bar_plot(MeanTable,"GEV", cols=colors3, title="NER-50-year extreme precipita
 ggsave("50yr-PrecipEvent-bar.png", path=OutDir, width = PlotWidth, height = PlotHeight)
 
 ## Maps
-MasterTable = rename(MasterTable, UNIT_CODE = park)
+MasterTable = dplyr::rename(MasterTable, UNIT_CODE = park)
 NE_Historical <- MasterTable |> filter(CF == "Historical")
 NE_WD <- MasterTable |> filter(CF == "Warm Damp") |> left_join(NE_Historical, by = "UNIT_CODE") %>% 
   mutate(TavgF_delta = TavgF.x - TavgF.y,
-         TmaxF_delta = TmaxF.x - TmaxF.y) %>% 
+         TmaxF_delta = TmaxF.x - TmaxF.y,
+         PrcpIn_delta = PrcpIn.x - PrcpIn.y,
+         PrecipOver1_delta = PrecipOver1.x - PrecipOver1.y,
+         UnderColdTemp_delta = UnderColdTemp.x - UnderColdTemp.y) %>% 
   select(UNIT_CODE, ends_with("_delta"))
 NE_HW <- MasterTable |>filter(CF == "Hot Wet")|> left_join(NE_Historical, by = "UNIT_CODE") %>% 
   mutate(TavgF_delta = TavgF.x - TavgF.y,
-         TmaxF_delta = TmaxF.x - TmaxF.y) %>% 
+         TmaxF_delta = TmaxF.x - TmaxF.y,
+         PrcpIn_delta = PrcpIn.x - PrcpIn.y,
+         PrecipOver1_delta = PrecipOver1.x - PrecipOver1.y,
+         UnderColdTemp_delta = UnderColdTemp.x - UnderColdTemp.y) %>% 
   select(UNIT_CODE, ends_with("_delta"))
 
 WD_centroids <- ner_centroids |> left_join(NE_WD,by="UNIT_CODE")
@@ -152,29 +163,166 @@ HW_centroids <- ner_centroids |> left_join(NE_HW,by="UNIT_CODE")
 N <- distinct(ner_centroids, UNIT_CODE,.keep_all = T)
 N <- extract(N, geometry, into = c('Lat', 'Lon'), '\\((.*),(.*)\\)', conv = T)
 
+
+# Tavg
 WD_plot <- ggplot() + 
   geom_sf(data = states,color="black",fill="tan")  +
   geom_sf(data = WD_centroids,aes(size=TavgF_delta,fill=TavgF_delta),color="black", pch=21) +
   geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
                    size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
-  ggtitle("Warm Damp") + labs(fill="Temperature Change", size="Temperature Change") +
+  ggtitle("Warm Damp") + labs(fill="Temperature Change (\u00B0F)", size="Temperature Change (\u00B0F)") +
   coord_sf()+
   theme(legend.position="bottom") +
-  scale_fill_steps(low = "grey", high = "red")+
+  scale_fill_steps(low = "grey", high = "red", 
+                   limits = c(min(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE),
+                                  max(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE),
+                                   max(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE)))+
+  # scale_fill_viridis(direction=-1, option = scale, 
+  #                    limits = c(scale.min, scale.max), oob = scales::squish) + 
   # scale_fill_binned(type = "viridis") +
-  guides(fill = guide_legend(nrow = 1,byrow=TRUE)) 
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE)) 
+WD_plot
 
 HW_plot <- ggplot() + 
   geom_sf(data = states,color="black",fill="tan")  +
   geom_sf(data = HW_centroids,aes(size=TavgF_delta,fill=TavgF_delta),color="black", pch=21) +
   geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
                    size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
-  ggtitle("Hot Wet") + labs(fill="Temperature Change", size="Temperature Change") +
+  ggtitle("Hot Wet") + labs(fill="Temperature Change (\u00B0F)", size="Temperature Change (\u00B0F)") +
   coord_sf()+
   theme(legend.position="bottom") +
-  scale_fill_steps(low = "grey", high = "navy")+
-  guides(fill = guide_legend(nrow = 1,byrow=TRUE)) 
+  scale_fill_steps(low = "grey", high = "navy",llimits = c(min(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE),
+                                                           max(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE),
+                               max(c(WD_centroids$TavgF_delta,HW_centroids$TavgF_delta),na.rm=TRUE)))+
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE))
+HW_plot
 
-g <- grid.arrange(WD_plot,HW_plot,nrow=1,top = "Average annual temperature (degF)")
-ggsave(plot=g,"TempPanel.png", path = OutDir, height=9, width=12,bg="white")
+g <- grid.arrange(WD_plot,HW_plot,nrow=1)
+annotate_figure(g, top = text_grob("Change in average annual temperature (\u00B0F)", 
+                                   face = "bold", size = 20))
+ggsave("TempPanel.png", path = OutDir, height=6, width=12,bg="white")
 
+
+# PrcpIn
+WD_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = WD_centroids,aes(size=PrcpIn_delta,fill=PrcpIn_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Warm Damp") + labs(fill="Precip change (inches/yr)", size="Precip change (inches/yr)") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "red", 
+                   limits = c(min(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE),
+                              max(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE),
+                               max(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE)))+
+  # scale_fill_viridis(direction=-1, option = scale, 
+  #                    limits = c(scale.min, scale.max), oob = scales::squish) + 
+  # scale_fill_binned(type = "viridis") +
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE)) 
+WD_plot
+
+HW_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = HW_centroids,aes(size=PrcpIn_delta,fill=PrcpIn_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Hot Wet") + labs(fill="Precip change (inches/yr)", size="Precip change (inches/yr)") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "navy",limits = c(min(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE),
+                                                           max(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE),
+                               max(c(WD_centroids$PrcpIn_delta,HW_centroids$PrcpIn_delta),na.rm=TRUE)))+
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE))
+HW_plot
+
+g <- grid.arrange(WD_plot,HW_plot,nrow=1)
+annotate_figure(g, top = text_grob("Change in average annual precipitation (Inches/yr)", 
+                                   face = "bold", size = 20))
+ggsave("PrecipPanel.png", path = OutDir, height=6, width=12,bg="white")
+
+
+# Days oVer 1in precip
+WD_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = WD_centroids,aes(size=PrecipOver1_delta,fill=PrecipOver1_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Warm Damp") + labs(fill="Days/yr", size="Days/yr") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "red", 
+                   limits = c(min(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE),
+                              max(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE),
+                               max(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE)))+
+  # scale_fill_viridis(direction=-1, option = scale, 
+  #                    limits = c(scale.min, scale.max), oob = scales::squish) + 
+  # scale_fill_binned(type = "viridis") +
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE)) 
+WD_plot
+
+HW_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = HW_centroids,aes(size=PrecipOver1_delta,fill=PrecipOver1_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Hot Wet") + labs(fill="Days/yr", size="Days/yr") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "navy",limits = c(min(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE),
+                                                           max(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE),
+                               max(c(WD_centroids$PrecipOver1_delta,HW_centroids$PrecipOver1_delta),na.rm=TRUE)))+
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE))
+HW_plot
+
+g <- grid.arrange(WD_plot,HW_plot,nrow=1)
+annotate_figure(g, top = text_grob("Change in days with precip >1 inch (Days/yr)", 
+                                   face = "bold", size = 20))
+ggsave("PrecipOver1Panel.png", path = OutDir, height=6, width=12,bg="white")
+
+
+#Under32
+WD_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = WD_centroids,aes(size=UnderColdTemp_delta,fill=UnderColdTemp_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Warm Damp") + labs(fill="Days/yr", size="Days/yr") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "red", 
+                   limits = c(min(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE),
+                              max(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE),
+                               max(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE)))+
+  # scale_fill_viridis(direction=-1, option = scale, 
+  #                    limits = c(scale.min, scale.max), oob = scales::squish) + 
+  # scale_fill_binned(type = "viridis") +
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE)) 
+WD_plot
+
+HW_plot <- ggplot() + 
+  geom_sf(data = states,color="black",fill="tan")  +
+  geom_sf(data = HW_centroids,aes(size=UnderColdTemp_delta,fill=UnderColdTemp_delta),color="black", pch=21) +
+  geom_label_repel(data = N, aes(x = Lat, y = Lon, label = UNIT_CODE),
+                   size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Hot Wet") + labs(fill="Days/yr", size="Days/yr") +
+  coord_sf()+
+  theme(legend.position="bottom") +
+  scale_fill_steps(low = "grey", high = "navy",limits = c(min(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE),
+                                                           max(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE)))+
+  scale_size_binned(limits = c(min(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE),
+                               max(c(WD_centroids$UnderColdTemp_delta,HW_centroids$UnderColdTemp_delta),na.rm=TRUE)))+
+  guides(fill = guide_legend(nrow = 1,byrow=TRUE),size=guide_legend(nrow = 1,byrow=TRUE))
+HW_plot
+
+g <- grid.arrange(WD_plot,HW_plot,nrow=1)
+annotate_figure(g, top = text_grob("Change in annual days below 32 (Days/yr)", 
+                                   face = "bold", size = 20))
+ggsave("Under32.png", path = OutDir, height=6, width=12,bg="white")
