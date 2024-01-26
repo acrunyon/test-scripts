@@ -14,15 +14,17 @@ DataDir <- "D:/RCF/RCF_opened/"
 
 
 nps_centroids <- st_read('C:/Users/arunyon/3D Objects/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/nps_boundary_centroids/nps_boundary_centroids.shp')
-ner_centroids <- nps_centroids |> filter(REGION == "NE")
+# ner_centroids <- nps_centroids |> filter(REGION == "NE")
+conus_centroids <- nps_centroids |> filter(!STATE %in% c("AK","HI","AS","GU", "MP","PR","VI"))
 states <-  st_read('C:/Users/arunyon/3D Objects/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/State_Shapefile/States_NAD83_Albers.shp')
 states <- st_transform(x=states,crs = "NAD83")
-states <- states |> filter(STATE_ABBR %in% ner_centroids$STATE)
+states <- states |> filter(STATE_ABBR %in% conus_centroids$STATE)
+# states <- states |> filter(STATE_ABBR %in% ner_centroids$STATE)
 states_geometry <- st_geometry(states)
 
 
 
-Parks <- ner_centroids$UNIT_CODE
+Parks <- conus_centroids$UNIT_CODE
 # Parks <- subset to parks in NER
 ParkFolders <- paste0(DataDir,Parks,"/")
 
@@ -30,22 +32,47 @@ ParkFolders <- paste0(DataDir,Parks,"/")
 CFs <- "WarmDry_HotWet/" #WarmWet_HotDry/, WarmDry_HotWet/
 CF.abbrev <- "WD-HW" #WW-HD, WD-HW
 
+MasterTable <- data.frame()
+for (i in 1:length(Parks)){
+  table.name <- paste0(ParkFolders[i],CFs,"tables/",Parks[i],"_",CF.abbrev,"_Plot_data.xlsx")
+  if(!file.exists(table.name)) {
+    next} else {
+  table <- read.xlsx(xlsxFile = table.name,sheet = 1)
+  drought <- read.csv(paste0(ParkFolders[i],CFs,"tables/Drought_characteristics.csv"))
+  table <- merge(table,drought,by="CF")
+  return <- read.csv(paste0(ParkFolders[i],CFs,"tables/precip_recurrence_interval.csv")) |>
+    subset(return==50,select=c(CF,GEV))
+  table <- merge(table,return,by="CF")
+  table$park <- Parks[i]
+  MasterTable <- rbind(MasterTable,table)
+    }
+}
+write.csv(MasterTable,paste0(OutDir,"WD-HW-ALL-MasterTable.csv"),row.names=F,)
+# 
+# CFs <- "WarmWet_HotDry/" #WarmWet_HotDry/, WarmDry_HotWet/
+# CF.abbrev <- "WW-HD" #WW-HD, WD-HW
+# 
 # MasterTable <- data.frame()
 # for (i in 1:length(Parks)){
 #   table.name <- paste0(ParkFolders[i],CFs,"tables/",Parks[i],"_",CF.abbrev,"_Plot_data.xlsx")
 #   if(!file.exists(table.name)) {
 #     next} else {
-#   table <- read.xlsx(xlsxFile = table.name,sheet = 1)
-#   drought <- read.csv(paste0(ParkFolders[i],CFs,"tables/Drought_characteristics.csv"))
-#   table <- merge(table,drought,by="CF")
-#   return <- read.csv(paste0(ParkFolders[i],CFs,"tables/precip_recurrence_interval.csv")) |> 
-#     subset(return==50,select=c(CF,GEV))
-#   table <- merge(table,return,by="CF")
-#   table$park <- Parks[i]
-#   MasterTable <- rbind(MasterTable,table)
+#       table <- read.xlsx(xlsxFile = table.name,sheet = 1)
+#       drought.table <- paste0(ParkFolders[i],CFs,"tables/Drought_characteristics.csv")
+#       if(!file.exists(drought.table)) {
+#         next} else {
+#       drought <- read.csv(drought.table)
+#       table <- merge(table,drought,by="CF")
+#       return <- read.csv(paste0(ParkFolders[i],CFs,"tables/precip_recurrence_interval.csv")) |>
+#         subset(return==50,select=c(CF,GEV))
+#       table <- merge(table,return,by="CF")
+#       table$park <- Parks[i]
+#       MasterTable <- rbind(MasterTable,table)
+#         }
 #     }
 # }
-# write.csv(MasterTable,paste0(OutDir,"MasterTable.csv"),row.names=F,)
+# write.csv(MasterTable,paste0(OutDir,"WW-HD-ALL-MasterTable.csv"),row.names=F,)
+
 MasterTable <- read.csv(paste0(OutDir,"MasterTable.csv"))
 
 MasterTable$CF <- factor(MasterTable$CF)
