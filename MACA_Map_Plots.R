@@ -1,16 +1,69 @@
-CF.folders <- "C:/Users/arunyon/3D Objects/Local-files/RCF_Testing/"
+library(terra)
+library(dplyr)
+library(sf)
+library(stringr)
+library(tidyverse)
+
+rm(list=ls())
+
 
 SiteID <- "VALL"
+CF.folders <- "C:/Users/arunyon/3D Objects/Local-files/RCF_Testing/"
+OutDir <- "C:/Users/arunyon/Downloads/"
+tifDir <- "C:/Users/arunyon/Downloads/"
+CFs <- c("Warm Wet", "Hot Dry") 
+# CFs <- c("Warm Dry", "Hot Wet") 
 
-"sessionInfo.txt"
+## Extract CFs from SessionInfo
+SessionInfo <- read.table(paste0(CF.folders,SiteID,"/SessionInfo.txt"), sep = "^")
+
+# extract GCMs and CFs from 9th row of SessionInfo - extract between parenthesis and convert to vector
+GCMs <- regmatches(SessionInfo[9,], regexpr("\\((.*?)\\)", SessionInfo[9,]))[[1]]; GCMs <- gsub("\\(|\\)", "", GCMs)
+GCMs <- strsplit(GCMs,split=", ",fixed=TRUE)[[1]]
+CF.list <- tail(regmatches(SessionInfo[9,], gregexpr("\\((.*?)\\)", SessionInfo[9,]))[[1]], 1); CF.list <- gsub("\\(|\\)", "", CF.list)
+CF.list <- strsplit(CF.list,split=", ",fixed=TRUE)[[1]]
+
+CF.GCM <- data.frame(CF=CF.list, GCM=GCMs)
+CF.GCM <- subset(CF.GCM, CF %in% CFs)
+CF1 <- CF.GCM |> filter(CF == CFs[1])
+CF2 <- CF.GCM |> filter(CF == CFs[2])
 
 nps_boundary <- st_read('C:/Users/arunyon/3D Objects/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/nps_boundary/nps_boundary.shp')
 park <- filter(nps_boundary, UNIT_CODE == SiteID)
 box = sf::st_bbox(park)
 
-http://thredds.northwestknowledge.net:8080/thredds/ncss/ANALOGS/MACAV2/conus_analogs/climate_data/pptannual/macav2metdata_pptannual_20702099_rcp85_bcc-csm1-1.nc?var=pptannual&north=43.64049%20&west=-103.55064&east=-103.33681&south=43.49720&disableLLSubset=on&disableProjSubset=on&horizStride=1&addLatLon=true&accept=netcdf
+# read in files from variable and CF names
+# Var
+Var = "runoff_ANN"
 
-http://thredds.northwestknowledge.net:8080/thredds/ncss/grid/ANALOGS/MACAV2/conus_analogs/climate_data/maxSWE/macav2metdata_maxSWE_19712000_historical_CMIP5ModelMean.nc/dataset.html
+#Find file name that contains var and CF | historical
+
+# sub("\\..*", "", CF1$GCM) # Extract part before period
+# sub('.*\\.', '', CF1$GCM) # Extract part after period
+
+Hist.file <- str_subset(list.files(path=tifDir, pattern = Var), pattern="historical")
+
+CF1.file <- map(c(sub('.*\\.', '', CF1$GCM), sub("\\..*", "", CF1$GCM)), 
+    str_detect, string = list.files(path=tifDir, pattern = Var)) %>%
+  reduce(`&`) %>% 
+  magrittr::extract(list.files(path=tifDir, pattern = Var), .)
+
+CF2.file <- map(c(sub('.*\\.', '', CF2$GCM), sub("\\..*", "", CF2$GCM)), 
+                str_detect, string = list.files(path=tifDir, pattern = Var)) %>%
+  reduce(`&`) %>% 
+  magrittr::extract(list.files(path=tifDir, pattern = Var), .)
+
+Hist.rast <- terra::flip(rast(paste0(tifDir, Hist.file)), direction="vertical") #Read in raster and flip it
+CF1.rast <- terra::flip(rast(paste0(tifDir, CF1.file)), direction="vertical") #Read in raster and flip it
+CF2.rast <- terra::flip(rast(paste0(tifDir, CF2.file)), direction="vertical") #Read in raster and flip it
+
+# Clip raster to park
+b <- st_buffer(park[1], 2000)
+r <- crop(Hist.rast, b)
+plot(r)
+plot(park[1],add=T)
+
+# plot
 
 fig <- "C:/Users/arunyon/Downloads/macav2metdata_pptannual_20702099_rcp85_bcc-csm1-1 (1).nc"
 # obj <- terra::rast(fig)
