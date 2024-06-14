@@ -39,3 +39,6 @@ vignettes/*.pdf
 .Renviron
 *.pptx
 *.html
+
+RCF_meta-analysis_files/*
+RCF_meta-analysis_files/
