@@ -1,0 +1,154 @@
+---
+title: "CF quadrant issues with exposure reports"
+subtitle: "Issue documentation and proposed solutions"
+author: "A.N. Runyon"
+format: html
+editor: visual
+---
+
+## Issue
+
+We ran an exposure report for SARA (upstate NY) using the Warm Dry/Hot Wet quadrants and the plot for return intervals shows that they will be decreasing in both CFs. Not what I'd expect for upstate NY and a message that I'm uncomfortable conveying in exposure reports, Especially when you look at the other set of quadrants and the trend is flipped.
+
+This is ultimately an issue with our method of using individual models for metrics of extremes (WB, drought, and precip) but selecting the CFs based on mean T and P, earlier in the process. If we were selecting for a single park or resource we might select CFs based on return intervals or drought severity but that's difficult to do for a process like these exposure reports that are so general.
+
+## Testing the issue
+
+I was curious where this was an issue (both CFs showing conditions 'improving') for extreme precip and drought for each set of quadrants so I ran a couple of plots to see if there were noticeable trends. The plots below show - for 50-yr return intervals and drought severity - which set of quadrants show conditions in both CFs are getting better (large precip events and drought severity decreasing). The color represents the set of quadrants (warm dry/hot wet = green, warm wet/hot dry = red, both sets of diagonals = gray) and the size of the dot is the magnitude of change in the unexpected direction. 
+
+```{r}
+#| echo: false
+#| 
+library(dplyr);library(plyr);library(ggplot2);library(openxlsx);library(sf);library(tidyverse);library(flextable);library(ggrepel);library(gridExtra);library(grid);library(ggpubr)
+rm(list=ls())
+
+rm(list=ls())
+OutDir <- "C:/Users/arunyon/3D Objects/Local-files/Meta-analysis/Output/" #directory for output/plots
+DataDir <- "D:/RCF/RCF_opened/"
+
+nps_centroids <- st_read('C:/Users/arunyon/3D Objects/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/nps_boundary_centroids/nps_boundary_centroids.shp')
+conus_centroids <- nps_centroids |> filter(!STATE %in% c("AK","HI","AS","GU", "MP","PR","VI"))
+states <-  st_read('C:/Users/arunyon/3D Objects/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/State_Shapefile/States_NAD83_Albers.shp')
+states <- st_transform(x=states,crs = "NAD83")
+states <- states |> filter(STATE_ABBR %in% conus_centroids$STATE)
+states_geometry <- st_geometry(states)
+
+Parks <- conus_centroids$UNIT_CODE
+# Parks <- subset to parks in NER
+# ParkFolders <- paste0(DataDir,Parks,"/")
+
+conus_centroids <- conus_centroids[2] 
+conus_centroids <- conus_centroids |> dplyr::rename(park=UNIT_CODE)
+
+WW.HD <- read.csv(paste0(OutDir,"WW-HD-ALL-MasterTable.csv")) |> arrange(park)
+WD.HW <- read.csv(paste0(OutDir,"WD-HW-ALL-MasterTable.csv")) |> arrange(park)
+
+all <- rbind(WW.HD,WD.HW) |> arrange(park)
+all <- unique(all)
+
+hist <- all |> filter(CF=="Historical") |> select(c(CF, Severity, GEV, park))
+ww.hd.fut <- WW.HD |> filter(CF!="Historical") |> 
+  select(c(CF, Severity, GEV, park)) |> 
+  left_join(hist,by="park") |> 
+  mutate(Severity.delta = Severity.x - Severity.y,
+         GEV.delta = GEV.x - GEV.y)
+
+ww.hd.CFdelta <- ww.hd.fut |> group_by(park) |> mutate(Severity.CFdelta = Severity.x - Severity.x[CF.x == "Warm Wet"],
+                                                       GEV.CFdelta = GEV.x - GEV.x[CF.x == "Warm Wet"]) |> 
+  subset(CF.x != "Warm Wet", select=c(park, Severity.CFdelta, GEV.CFdelta)) |> mutate(CF="WW.HD")
+ 
+ww.hd.GEV <- ww.hd.fut |> filter(GEV.delta<=0) |> 
+  select(c(CF.x,park,GEV.delta)) |> filter(duplicated(park))
+
+ww.hd.drt <- ww.hd.fut |> filter(Severity.delta>=0) |> 
+  select(c(CF.x,park,Severity.delta)) |> filter(duplicated(park))
+ 
+  
+wd.hw.fut <- WD.HW |> filter(CF!="Historical") |> 
+  select(c(CF, Severity, GEV, park)) |> 
+  left_join(hist,by="park") |> 
+  mutate(Severity.delta = Severity.x - Severity.y,
+         GEV.delta = GEV.x - GEV.y)
+
+wd.hw.CFdelta <- wd.hw.fut |> group_by(park) |> mutate(Severity.CFdelta = Severity.x - Severity.x[CF.x == "Hot Wet"],
+                                                       GEV.CFdelta = GEV.x - GEV.x[CF.x == "Hot Wet"]) |> 
+  subset(CF.x != "Hot Wet", select=c(park, Severity.CFdelta, GEV.CFdelta)) |> mutate(CF="WD.HW")
+
+
+wd.hw.GEV <- wd.hw.fut |> filter(GEV.delta<=0) |> 
+  select(c(CF.x,park,GEV.delta)) |> filter(duplicated(park))
+
+wd.hw.drt <- wd.hw.fut |> filter(Severity.delta>=0) |> 
+  select(c(CF.x,park,Severity.delta)) |> filter(duplicated(park))
+
+#Merge for plotting
+park.GEV <- rbind(ww.hd.GEV |> mutate(CF="WW.HD"),wd.hw.GEV |> mutate(CF="WD.HW")) 
+
+park.GEV$CF[duplicated(park.GEV$park)|duplicated(park.GEV$park, fromLast=TRUE)] <- "Both"
+
+park.GEV <- park.GEV %>% 
+  group_by(park) %>% 
+  slice_max(GEV.delta, n = 1) %>%
+  ungroup()
+
+park.GEV <- merge(conus_centroids,park.GEV,by="park",na.rm=TRUE)
+GEVpark.coords <- extract(park.GEV, geometry, into = c('Lat', 'Lon'), '\\((.*),(.*)\\)', conv = T)
+
+park.drt <- rbind(ww.hd.drt |> mutate(CF="WW.HD"),wd.hw.drt |> mutate(CF="WD.HW")) 
+park.drt$CF[duplicated(park.drt$park)|duplicated(park.drt$park, fromLast=TRUE)] <- "Both"
+
+park.drt <- park.drt %>% 
+  group_by(park) %>% 
+  slice_max(Severity.delta, n = 1) %>%
+  ungroup()
+
+park.drt <- merge(conus_centroids,park.drt,by="park",na.rm=TRUE)
+drtpark.coords <- extract(park.drt, geometry, into = c('Lat', 'Lon'), '\\((.*),(.*)\\)', conv = T)
+
+ggplot() + 
+  geom_sf(data = states,color="black",fill="tan") + 
+  # geom_sf(data = park.GEV,color="black", pch=21,size=4) + 
+  geom_sf(data=park.GEV,aes(fill=CF,size=-GEV.delta),pch=21) +
+  # geom_text_repel(data=park.GEV,aes(label=park)) +
+  scale_fill_manual(values=c("gray","darkgreen","red")) +
+  # scale_fill_viridis_d(option = "turbo") +
+  # geom_label(data = GEVpark.coords, aes(Lat, Lon, label = park), size = 4) +
+  geom_label_repel(data = GEVpark.coords, aes(x = Lat, y = Lon, label = park),
+                   size = 3,min.segment.length = 0, segment.color = 'grey50', show.legend=F) +
+  # geom_label_repel(data = hd.park.coords, aes(x = Lat, y = Lon, label = GCM),
+  # size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Parks where extreme precip models show decreasing amount") +
+  coord_sf()
+
+ggplot() + 
+  geom_sf(data = states,color="black",fill="tan") + 
+  # geom_sf(data = park.GEV,color="black", pch=21,size=4) + 
+  geom_sf(data=park.drt,aes(fill=CF,size=Severity.delta),pch=21) +
+  # geom_text_repel(data=park.GEV,aes(label=park)) +
+  scale_fill_manual(values=c("gray","darkgreen","red")) +
+  # scale_fill_viridis_d(option = "turbo") +
+  # geom_label(data = GEVpark.coords, aes(Lat, Lon, label = park), size = 4) +
+  geom_label_repel(data = drtpark.coords, aes(x = Lat, y = Lon, label = park),
+                   size = 3,min.segment.length = 0, segment.color = 'grey50', show.legend=F) +
+  # geom_label_repel(data = hd.park.coords, aes(x = Lat, y = Lon, label = GCM),
+  # size = 1.5,min.segment.length = 0, segment.color = 'grey50', max.overlaps = getOption("ggrepel.max.overlaps", default = 99),show.legend=F) +
+  ggtitle("Parks where drought severity models show decreasing amount") +
+  coord_sf()
+
+```
+
+This tells me that, at a minimum, there are a few dozen parks that we need to be very careful with both in the CFs that we select and the messages conveyed. It's mostly an issue with the warm dry/hot wet quadrants, so therefore is mostly an issue in the NER, where we're using those quadrants, however not exclusively.  I think it's unacceptable to convey that extreme precip isn't going to be an issue in places like the NER, where we know that's the case or that drought won't be as bad at NEPE and WHIS where fire is a concern. 
+
+## Solution
+On 31 Jan 2024, the this information was presented to the CS&A team in our weekly call. It was agreed upon that this information is useful for identifying the problem, scope, and having a list of parks to be aware of. Possible solutions discussed included:
+1. Revising all analysis to include extreme precipitation and drought severity in the model selection. This approach was dismissed because it would add months to the timeframe for completing the exposure reports and would also require heavy revisions to the methods NRR, that is already in press.
+2. Get rid of any plots that use individual models, including the water balance, drought plots, and return internals. This approach was also dismissed because we would lose valuable information and insights.
+3. Carefully select the CFs used in the parks ID'ed in the plots above. The origional suggestion was to select the opposite sets of quadrants. For example, in the NER where we use warm dry-hot wet and know that extreme precipitation is a concern, use warm wet-hot dry and in the western US where we know drought is an issue, do the same for other quadrants. We modified this approach and agreed to use the same sets of diagonals, but select different GCMs that capture the nature of extremes.
+
+## Next steps
+The next step is to ID if there are GCMs in the region that are common to the 'offending' parks (and should be used with caution).
+
+Then we need to ID alternative CFs to use for the following parks
+1. NER parks on the extreme precip list
+2. Western parks on the drought list
+3. Other parks on both lists (e.g., MACA)
