@@ -16,7 +16,7 @@ links <- links[1:377] #removes last few that are not park RCF files
 
 # Specify the file name and location where you want to save the file on your computer
 file_names <- sub('.*\\/', '', links) #file names are park.zip
-file_path <- "D:/RCF_2024/"
+file_path <- "E:/RCF_2024/"
 
 for (i in 1:length(links)){ #Run as loop to avoid timeout - which happens when calling too many units
 # for (i in 351:length(links)-1){
@@ -24,9 +24,9 @@ download.file(links[i], paste(file_path, file_names[i], sep = ""), mode = "wb")
 }
 
 
-extraction_path <- "D:/RCF_2024/RCF_opened/"
+extraction_path <- "E:/RCF_2024/RCF_opened/"
 zip.list <- list.files(path = file_path, pattern = "*.zip", full.names = TRUE)
 
-ldply(.data = zip.list[1:179], .fun = unzip, exdir = extraction_path)
+ldply(.data = zip.list[1:377], .fun = unzip, exdir = extraction_path)
 
 
