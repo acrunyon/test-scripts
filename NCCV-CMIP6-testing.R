@@ -32,16 +32,35 @@ write.csv(DF, "D:/LOCA2/LOCA2-monthly-all-units.csv")
 
 
 
+##################
+# extract tresholds for each park unit
+thresholds_nc = tidync("E:/LOCA2/CMIP6-LOCA2_Thresholds_1950-2100_NPS_annual.nc")
+
+metrics = thresholds_nc$variable # view variables available
+projections = thresholds_nc %>% activate("ensemble") %>% hyper_tibble()
+parks = thresholds_nc %>% activate("UNIT_CODE") %>% hyper_tibble()
+
+## tidync works better for extracting values from complex .nc but terra::rast works better for plotting
 
 
 
+# maps from thresholds mesh
+spatial = terra::rast("E:/LOCA2/spatial/CMIP6-LOCA2_Thresholds_AllModels_grid_CDD/CMIP6-LOCA2_Thresholds_AllModels_grid/CDD/CMIP6-LOCA2_Thresholds_CDD_ACCESS-CM2.ssp245.r1i1p1f1_1950-2100_16thdeg_grid.nc")
+
+terra::plot(spatial$CDD_151) # var_1:151 for each year 1950-2100; use terra::plot to plot
 
 
+nps_boundary <- st_read('C:/Users/arunyon/Local-files/Git-repos/CCRP_automated_climate_futures/data/general/spatial-data/nps_boundary/nps_boundary.shp')
+park <- filter(nps_boundary, UNIT_CODE == "WICA")
+park = st_transform(park, crs(spatial))
 
 
+park_df = terra::extract(spatial, park) # extract extracts values and converts to df
+park_rast = terra::crop(spatial, park) # crops out shape
 
-
-
+mn = mean(park_rast)
+plot(mn)
+plot(park[1], add=TRUE, col="transparent",border="black",lwd=4)
 
 
 
