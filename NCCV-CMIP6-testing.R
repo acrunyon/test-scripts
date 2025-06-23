@@ -7,13 +7,14 @@ library(tidyr)
 
 rm(list=ls())
 
+# extract raw monthly data
 nc = tidync("D:/LOCA2/CMIP6-LOCA2_1950-2100_NPS_monthly.nc")
 
 projections = nc %>% activate("ensemble") %>% hyper_tibble() # extracts values of all projections
 parks = nc %>% activate("UNIT_CODE") %>% hyper_tibble()
 metrics = c("tasmin", "tasmax", "pr", "tas")
 
-for (i in 2:length(metrics)){
+for (i in 2:length(metrics)){ # this took a couple of hours to do for all parks
   var = metrics[[i]]
   df = nc %>% activate(metrics[[i]]) %>% hyper_tbl_cube()
   df1 = data.frame(var = df$mets[[metrics[[i]]]])
@@ -28,6 +29,21 @@ for (i in 2:length(metrics)){
 }
 
 write.csv(DF, "D:/LOCA2/LOCA2-monthly-all-units.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ##### UNUSED CODE
