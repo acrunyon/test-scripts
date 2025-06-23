@@ -1,4 +1,4 @@
-# library(terra)
+library(terra)
 library(sf)
 library(dplyr)
 library(ncdf4)
@@ -7,6 +7,7 @@ library(tidyr)
 
 rm(list=ls())
 
+################
 # extract raw monthly data
 nc = tidync("D:/LOCA2/CMIP6-LOCA2_1950-2100_NPS_monthly.nc")
 
