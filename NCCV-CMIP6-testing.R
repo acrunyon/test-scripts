@@ -65,6 +65,39 @@ plot(park[1], add=TRUE, col="transparent",border="black",lwd=4)
 
 
 
+# Scatterplots
+
+# read csv and subset to ACAD, BAND, CRLA, CHAT, DETO
+cmip6 = read.csv("E:/LOCA2/LOCA2-monthly-all-units.csv")
+units = c("ACAD", "BAND", "CRLA", "CHAT", "DETO")
+
+c6 = cmip6 %>% filter(SiteID %in% units)
+
+c = c6 %>% mutate(date = as.Date(date,format="%Y-%m-%d"),
+                  year = format(date,"%Y"),
+                  period = ifelse(year < 2015, "Historical", "Future"))
+
+
+hist = c %>% filter(year> 1980 & year < 2011) %>% 
+  select(SiteID, GCM, date, year, pr, tas, period) %>% 
+  group_by(year, SiteID, GCM) %>% mutate(pr_sum = sum(pr)) %>% 
+  group_by(SiteID, GCM) %>% summarise(tmean = mean(tas),
+                                      precip = mean(pr_sum))
+
+fut = c %>% filter(year> 2034 & year < 2066) %>% 
+  select(SiteID, GCM, date, year, pr, tas, period) %>% 
+  group_by(year, SiteID, GCM) %>% mutate(pr_sum = sum(pr)) %>% 
+  group_by(SiteID, GCM) %>% summarise(tmean = mean(tas),
+                                      precip = mean(pr_sum))
+
+
+
+
+
+
+
+
+
 
 # ##### UNUSED CODE
 # # from tidync
