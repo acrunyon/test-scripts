@@ -92,7 +92,34 @@ fut = c %>% filter(year> 2034 & year < 2066) %>%
 
 
 
+precip_nc = tidync("E:/LOCA2/raw/pr.ACCESS-CM2.ssp245.r1i1p1f1.2075-2100.LOCA_16thdeg_v20240915.yearly.nc")
 
+time = precip_nc %>% activate("time")
+t = time$transforms$time
+
+spatial = terra::rast("E:/LOCA2/raw/pr.ACCESS-CM2.ssp245.r1i1p1f1.2075-2100.LOCA_16thdeg_v20240915.yearly.nc")
+
+terra::plot(spatial$pr_tavg_tavg_1) # var_1:151 for each year 1950-2100; use terra::plot to plot
+
+
+precip_mean = terra::rast("E:/LOCA2/raw/pr.ACCESS-CM2.ssp245.r1i1p1f1.2075-2100.LOCA_16thdeg_v20240915.yearly.all_mean.nc")
+terra::plot(precip_mean$pr_tavg_tavg_tavg)
+
+x = precip_mean$pr_tavg_tavg_tavg * 86400 * 365  / 25.4 #This is correct it just looks weird because it includes BC and desert MX - WICA test was spot on
+plot(x$pr_tavg_tavg_tavg)
+
+park = st_transform(park, crs(x))
+park360 = lwgeom::st_wrap_x(park, 0, 360) #need to convert from -180 180 to 0 360 to work with LOCA2 objects
+
+
+
+park_df = terra::extract(x, park360) 
+park_crop = terra::crop(x, park360)
+
+
+
+
+tmax_test = terra::rast("E:/LOCA2/raw/tasmax.ACCESS-CM2.ssp245.r1i1p1f1.2015-2044.LOCA_16thdeg_v20220413.monthly.nc")
 
 
 
