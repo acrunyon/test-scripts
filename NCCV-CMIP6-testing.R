@@ -66,7 +66,7 @@ plot(park[1], add=TRUE, col="transparent",border="black",lwd=4)
 
 
 
-
+##############################################
 # Scatterplots
 
 # read csv and subset to ACAD, BAND, CRLA, CHAT, DETO
@@ -76,6 +76,7 @@ units = c("ACAD", "BAND", "CRLA", "CHAT", "DETO")
 # c6 = cmip6 %>% filter(SiteID %in% units)
 
 cmip6 = read.csv("E:/LOCA2/LOCA2-test-set.csv")
+
 
 cmip6 = cmip6 %>% mutate(date = as.Date(date,format="%Y-%m-%d"),
                   year = format(date,"%Y"),
@@ -108,24 +109,39 @@ fut_delta = fut %>% left_join(hist, by = c("SiteID", "GCM")) %>%
 library(ggplot2)
 library(ggrepel)
 
-site = units[5]
+site = units[3]
+
+gcms = unique(stringr::str_sub(unique(hist$GCM), end=-8))
+
+ECS_likely_models = c("ACCESS.ESM1.5", "AWI.CM.1.1.MR", "BCC.CSM2.MR", "EC.Earth3", "FGOALS.g3", "GFDL.CM4", "GFDL.ESM4", "INM.CM4.8", 
+                      "INM.CM5.0", "MIROC6", "MPI.ESM1.2.HR", "MPI.ESM1.2.LR", "MRI.ESM2.0", "NorESM2.LM", "NorESM2.MM", "TaiESM1")
+
+TCR_likely_models = c("ACCESS.CM2", "ACCESS.ESM1.5", "AWI.CM.1.1.MR", "BCC.CSM2.MR", "CESM2.LENS", "CNRM.CM6.1", "CNRM.ESM2.1", "EC.Earth3", 
+                      "FGOALS.g3", "GFDL.CM4", "GFDL.ESM4", "NM.CM4.8", "INM.CM5.0", "KACE.1.0.G", "MIROC6", "MPI.ESM1.2.HR", "MPI.ESM1.2.LR", 
+                      "MRI.ESM2.0", "NorESM2.LM", "NorESM2.MM", "TaiESM1")
 
 loca_df = fut_delta %>% filter(SiteID == site)
+
+loca_df$gcm = stringr::str_sub(loca_df$GCM, end=-8)
+
+`%ni%` <- Negate(`%in%`)
+loca_df$hot_approach = "all"
+loca_df$hot_approach[which(loca_df$gcm %ni% ECS_likely_models)] = "ECS_excluded"
+loca_df$hot_approach[which(loca_df$gcm %ni% TCR_likely_models)] = "TCR_excluded"
+
 
 cmip5_park = read.csv(paste0("E:/RCF_2024/RCF_opened/", site, "/input-data/", site, "_Future_Means.csv"))
 
 tmean_range = c(min(loca_df$tmean_delta, cmip5_park$DeltaTavg), max(loca_df$tmean_delta, cmip5_park$DeltaTavg))
 precip_range = c(min(loca_df$precip_delta, cmip5_park$DeltaPr*365), max(loca_df$precip_delta, cmip5_park$DeltaPr*365))
 
-
-
-local_df %>% ggplot(aes(tmean_delta, precip_delta, xmin = quantile(tmean_delta, 0.25),
-             xmax = quantile(tmean_delta, 0.75),
-             ymin = quantile(precip_delta, 0.25),
-             ymax = quantile(precip_delta, 0.75))) +
-  geom_text_repel(aes(label=GCM)) +
+### Plots to show differences when start excluding 'hot' models
+loca_df %>% ggplot(aes(tmean_delta, precip_delta, xmin = quantile(tmean_delta, 0.25),
+                       xmax = quantile(tmean_delta, 0.75),
+                       ymin = quantile(precip_delta, 0.25),
+                       ymax = quantile(precip_delta, 0.75))) +
+  geom_text_repel(aes(label=GCM), colour="black") +
   geom_point(colour="black",size=4) +
-  geom_point(aes(color=ssp),size=4) + 
   theme(axis.text=element_text(size=16),
         axis.title.x=element_text(size=16,vjust=-0.2),
         axis.title.y=element_text(size=16,vjust=0.2),
@@ -136,16 +152,45 @@ local_df %>% ggplot(aes(tmean_delta, precip_delta, xmin = quantile(tmean_delta, 
   labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP6)",sep=""), 
        x = "Changes in average temp", # Change
        y = "Changes in precip") + #change
-  scale_color_manual(name="Scenarios", values=c("blue", "gold", "red")) +
+  scale_color_manual(name="Scenarios", values="black") +
   # scale_fill_manual(name="Scenarios",values = c("black")) + 
   geom_rect(color = "black", alpha=0) +
   geom_hline(aes(yintercept=mean(precip_delta)),linetype=2) + #change
-  geom_vline(aes(xintercept=mean(tmean_delta)),linetype=2) #change
+  geom_vline(aes(xintercept=mean(tmean_delta)),linetype=2) + #change
+  xlim(tmean_range[1], tmean_range[2]) +
+  ylim(precip_range[1], precip_range[2])
 
 
-ggsave(paste0(site, "_CMIP6_ssps.jpg"), path = "C:/Users/arunyon/OneDrive - DOI/Documents/CFs/CMIP6-transition/", height=9, width=12,bg="white")
+loca_df %>% ggplot(aes(tmean_delta, precip_delta, hot_approach, xmin = quantile(tmean_delta, 0.25),
+                                   xmax = quantile(tmean_delta, 0.75),
+                                   ymin = quantile(precip_delta, 0.25),
+                                   ymax = quantile(precip_delta, 0.75))) +
+  geom_text_repel(aes(label=GCM, colour = hot_approach)) +
+  geom_point(aes(colour=hot_approach),size=4) +
+  theme(axis.text=element_text(size=16),
+        axis.title.x=element_text(size=16,vjust=-0.2),
+        axis.title.y=element_text(size=16,vjust=0.2),
+        plot.title=element_text(size=20,face="bold",vjust=2,hjust=0.5),
+        legend.text=element_text(size=16), legend.title=element_text(size=16)) + 
+  theme_classic() +
+  ###
+  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP6)",sep=""), 
+       x = "Changes in average temp", # Change
+       y = "Changes in precip") + #change
+  scale_color_manual(name="Scenarios", values=c("black", "gray90", "lightsteelblue1")) +
+  # scale_fill_manual(name="Scenarios",values = c("black")) + 
+  geom_rect(color = "black", alpha=0) +
+  geom_hline(aes(yintercept=mean(precip_delta)),linetype=2) + #change
+  geom_vline(aes(xintercept=mean(tmean_delta)),linetype=2) + #change
+  xlim(tmean_range[1], tmean_range[2]) +
+  ylim(precip_range[1], precip_range[2])
+##############
 
+################
+# Plots to compare LOCA to MACA
 
+tmean_range = c(min(loca_df$tmean_delta, cmip5_park$DeltaTavg), max(loca_df$tmean_delta, cmip5_park$DeltaTavg))
+precip_range = c(min(loca_df$precip_delta, cmip5_park$DeltaPr*365), max(loca_df$precip_delta, cmip5_park$DeltaPr*365))
 
 loca_plot = loca_df %>% ggplot(aes(tmean_delta, precip_delta, xmin = quantile(tmean_delta, 0.25),
                                       xmax = quantile(tmean_delta, 0.75),
@@ -157,10 +202,13 @@ geom_text_repel(aes(label=GCM)) +
         axis.title.x=element_text(size=16,vjust=-0.2),
         axis.title.y=element_text(size=16,vjust=0.2),
         plot.title=element_text(size=20,face="bold",vjust=2,hjust=0.5),
+        plot.subtitle = element_text(size=16, face = 'italic', hjust=0.5),
         legend.text=element_text(size=16), legend.title=element_text(size=16)) + 
   theme_classic() +
   ###
-  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP6)",sep=""), 
+  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP6)",sep=""),
+       subtitle = paste0("Tmean range: ", round(min(loca_df$tmean_delta),2), " to ", round(max(loca_df$tmean_delta),2), 
+                         "\nPrecip range: ", round(min(loca_df$precip_delta),2), " to ", round(max(loca_df$precip_delta),2)),
        x = "Changes in average temp", # Change
        y = "Changes in precip") + #change
   scale_color_manual(name="Scenarios", values=c("black")) +
@@ -187,7 +235,9 @@ geom_text_repel(aes(label=GCM)) +
         legend.text=element_text(size=16), legend.title=element_text(size=16)) + 
   theme_classic() +
   ###
-  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP5)",sep=""), 
+  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP5)",sep=""),
+       subtitle = paste0("Tmean range: ", round(min(cmip5_park$DeltaTavg),2), " to ", round(max(cmip5_park$DeltaTavg),2), 
+                         "\nPrecip range: ", round(min(cmip5_park$DeltaPr*365),2), " to ", round(max(cmip5_park$DeltaPr*365),2)),
        x = "Changes in average temp", # Change
        y = "Changes in precip") + #change
   scale_color_manual(name="Scenarios", values=c("black")) +
@@ -200,12 +250,39 @@ geom_text_repel(aes(label=GCM)) +
   ylim(precip_range[1], precip_range[2])
 
 
-g = gridExtra::grid.arrange(maca_plot, loca_plot,nrow=2)
+g = gridExtra::grid.arrange(maca_plot, loca_plot,ncol=2)
 
-ggsave(paste0(site, "_CMIP5_vs_CMIP6_scatterplot.jpg"), path = "C:/Users/arunyon/OneDrive - DOI/Documents/CFs/CMIP6-transition/", plot = g, height=9, width=12,bg="white")
+ggsave(paste0(site, "_CMIP5_vs_CMIP6_scatterplot1.jpg"), path = "C:/Users/arunyon/OneDrive - DOI/Documents/CFs/CMIP6-transition/Comparison_scatterplots/", plot = g, height=9, width=12,bg="white")
+########################
 
 
+#######################
+# Plot showing different SSPs
+loca_df %>% ggplot(aes(tmean_delta, precip_delta, xmin = quantile(tmean_delta, 0.25),
+                       xmax = quantile(tmean_delta, 0.75),
+                       ymin = quantile(precip_delta, 0.25),
+                       ymax = quantile(precip_delta, 0.75))) +
+  geom_text_repel(aes(label=GCM)) +
+  geom_point(colour="black",size=4) +
+  geom_point(aes(color=ssp),size=4) + 
+  theme(axis.text=element_text(size=16),
+        axis.title.x=element_text(size=16,vjust=-0.2),
+        axis.title.y=element_text(size=16,vjust=0.2),
+        plot.title=element_text(size=20,face="bold",vjust=2,hjust=0.5),
+        legend.text=element_text(size=16), legend.title=element_text(size=16)) + 
+  theme_classic() +
+  ###
+  labs(title =paste(site," Changes in climate means in 2050 by GCM run (CMIP6)",sep=""), 
+       x = "Changes in average temp", # Change
+       y = "Changes in precip") + #change
+  scale_color_manual(name="Scenarios", values=c("blue", "gold", "red")) +
+  # scale_fill_manual(name="Scenarios",values = c("black")) + 
+  geom_rect(color = "black", alpha=0) +
+  geom_hline(aes(yintercept=mean(precip_delta)),linetype=2) + #change
+  geom_vline(aes(xintercept=mean(tmean_delta)),linetype=2) #change
 
+
+ggsave(paste0(site, "_CMIP6_ssps.jpg"), path = "C:/Users/arunyon/OneDrive - DOI/Documents/CFs/CMIP6-transition/", height=9, width=12,bg="white")
 
 
 
